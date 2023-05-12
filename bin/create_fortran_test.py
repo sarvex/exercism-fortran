@@ -52,7 +52,7 @@ def fix_and_quote_fortran_multiline(txt):
     if necessary"""
     if isinstance(txt, str):
         txt = txt.replace('\n', '"// & \n    & "')
-        return '"%s"' % txt
+        return f'"{txt}"'
     return txt
 
 
@@ -62,7 +62,6 @@ def write_testcase(c, TEST_NUMBER):
     ! Test <TEST_NUMBER>: (description of test)
     call assert.... (actual test case)
     """
-    si = []
     # example data
     # { 'description': 'non-question ending with whitespace',
     #   'property': 'response',
@@ -72,30 +71,26 @@ def write_testcase(c, TEST_NUMBER):
     fcall = c['property']
     error = c['expected']['error'] if type(
         c['expected']) is dict and 'error' in c['expected'] else None
-    fargs = [v for v in c['input'].values()]
+    fargs = list(c['input'].values())
     if fargs:
-        inp = '{}({}'.format(fcall, fix_and_quote_fortran_multiline(fargs[0]))
+        inp = f'{fcall}({fix_and_quote_fortran_multiline(fargs[0])}'
     else:
-        inp = '{}({}'.format(
-            fcall, fix_and_quote_fortran_multiline(" "))  # empty array
+        inp = f'{fcall}({fix_and_quote_fortran_multiline(" ")}'
     for a in fargs[1:]:
-        inp = '{}, {}'.format(inp, fix_and_quote_fortran_multiline(a))
-    inp = '{})'.format(inp)
+        inp = f'{inp}, {fix_and_quote_fortran_multiline(a)}'
+    inp = f'{inp})'
     expected = c['expected']
     if expected == True:
         expected = '.true.'
-    elif expected == False:
-        expected = '.false.'
-    elif expected == 'error':
+    elif expected in [False, 'error']:
         expected = '.false.'
     else:
         expected = fix_and_quote_fortran_multiline(expected)
-    si.append('  ! Test %d: %s' % (TEST_NUMBER, description))
+    si = ['  ! Test %d: %s' % (TEST_NUMBER, description)]
     if error:
         expected = 'ERROR'
-        si.append('  ! ERROR: %s' % (error))
-    si.append('  call assert_equal({}, {}, "{}")'.format(
-        expected, inp, description))
+        si.append(f'  ! ERROR: {error}')
+    si.append(f'  call assert_equal({expected}, {inp}, "{description}")')
     return si
 
 
@@ -171,8 +166,8 @@ program %s_test_main
         for ss in si:
             of.write('%s\n' % ss)
 
-    print('Wrote : ' + test_name)
-    stub_file_name = os.path.join(os.path.dirname(test_name), exercise+'.f90')
+    print(f'Wrote : {test_name}')
+    stub_file_name = os.path.join(os.path.dirname(test_name), f'{exercise}.f90')
     create_stub(exercise, stub_file_name)
 
 
@@ -217,7 +212,7 @@ def write_instructions(desc_file_lines, instruction_file):
     with open(instruction_file, 'w', encoding='utf-8') as of:
         for li in desc_file_lines:
             of.write(li.replace('# Description', '# Instructions'))
-    print('wrote %s' % instruction_file)
+    print(f'wrote {instruction_file}')
 
 
 def write_config_json(exercise_name, config_dict, local_config_json, authors=['pclausen']):
@@ -243,24 +238,20 @@ def write_config_json(exercise_name, config_dict, local_config_json, authors=['p
 }
 """
 
-    config_dict.update({
-        "authors": authors,
-        "files": {
-            "solution": [
-                "%s.f90" % exercise_name
-            ],
-            "test": [
-                "%s_test.f90" % exercise_name
-            ],
-            "example": [
-                ".meta/example.f90"
-            ]
+    config_dict.update(
+        {
+            "authors": authors,
+            "files": {
+                "solution": [f"{exercise_name}.f90"],
+                "test": [f"{exercise_name}_test.f90"],
+                "example": [".meta/example.f90"],
+            },
         }
-    })
+    )
 
     with open(local_config_json, 'w') as of:
         json.dump(config_dict, of, indent=4)
-    print('wrote %s' % local_config_json)
+    print(f'wrote {local_config_json}')
 
 
 def get_meta_info(meta_yaml):
@@ -272,8 +263,7 @@ def get_meta_info(meta_yaml):
     lines2 = [re.sub(r'^(\w+):', r'"\1":', li)
               for li in lines]
     lines3 = [li.replace('\n', ',') for li in lines2]
-    meta_info = json.loads(''.join(lines3))
-    return meta_info
+    return json.loads(''.join(lines3))
 
 
 if __name__ == '__main__':
@@ -300,7 +290,7 @@ if __name__ == '__main__':
     for td in test_dirs:
         if not os.path.isdir(td):
             os.mkdir(td)
-            print('created %s' % td)
+            print(f'created {td}')
 
     create_test(args.target, args.json)
     add_meta_and_doc_file(args.target, args.json)
